@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+func init() {
+	viper.SetDefault("server", "https://sender.xzhshch.com")
+}
+
 type Signaling struct {
 	ID        string `json:"id"`
 	Signaling string `json:"signaling"`
