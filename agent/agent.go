@@ -120,27 +120,6 @@ W:
 	return err
 }
 
-func (a *Agent) SendMessage(title, desp, link, channel string) error {
-	data, err := goreq.Post(viper.GetString("server")+"/api/v1/message").
-		AddParam("accesskey", a.AccessKey).
-		AddParam("agent", a.Name).
-		AddParam("title", title).
-		AddParam("desp", desp).
-		AddParam("link", link).
-		AddParam("channel", channel).
-		Do().JSON()
-	if err == nil {
-		if !data.Get("code").Exists() || data.Get("code").Int() != 0 {
-			return errors.New(data.Get("msg").String())
-		}
-	}
-	log.Err(err).
-		Str("agent", a.Name).
-		Str("title", title).
-		Msg("send message")
-	return err
-}
-
 func SendMessage(accesskey, title, desp, link, channel string) error {
 	data, err := goreq.Post(viper.GetString("server")+"/api/v1/message").
 		AddParam("accesskey", accesskey).

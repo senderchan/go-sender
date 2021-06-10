@@ -1,42 +1,69 @@
 # Sender Agent
 
-信达Agent
+这是一个信达的信令API的实现。这个程序将自动拉取信令，并根据配置文件执行对应的cmd命令。
 
-## 获取
-
-### 安装脚本
+## 获取Agent
 
 运行前请确认已经安装`wget`和`curl`。
 
 ```shell
-sudo sh -c "$(curl -sSL https://raw.githubusercontent.com/zhshch2002/sender-agent/master/install.sh)"
+sudo sh -c "$(curl -sSL https://raw.githubusercontent.com/github.com/senderchan/go-sender/master/install.sh)"
 ```
 
-脚本自动创建了一个配置文件，需要进行配置。配置方式参考[https://sender.xzhsh.ch/docs](https://sender.xzhsh.ch/docs)。
+第一次执行`sender`命令将在工作路径创建一个配置文件。在这个配置文件中设置Agent name和Access
+Key。
+```yaml
+name: test
+accesskey: 758e2e934f**************9ebafcb
 
-```shell
-sudo nano /etc/sender/agent/config.yaml
+action:
+  hello:
+    cmd: echo "hello"
+  ls:
+    cmd: ls -la
+    dir: ~/
+  aaa:
+    script: ./run.sh
+    dir: ~/
+  send:
+    cmd: echo "ok"
+    forward: http://localhost:9000
+  default:
+    cmd: docker version
 ```
 
-随后，启动服务即可。
+再次运行`sender`后Agent即开始运行。
+
+使用`sender service`将在`/etc/systemd/system/sender.service`创建service配置文件。
 
 ```shell
+sudo systemctl daemon-reload
+sudo systemctl enable sender
 sudo systemctl start sender
 ```
 
-### 二进制程序
+## SDK
+```go
+package main
 
-在 [Release](https://github.com/zhshch2002/sender-agent/releases) 页面下载Agent的二进制程序。
+import (
+	"github.com/senderchan/go-sender/agent"
+)
 
-解压压缩文件后，在压缩文件同一目录下创建`config.yaml`。配置方式参考[https://sender.xzhsh.ch/docs](https://sender.xzhsh.ch/docs)。
+func main() {
+	agent.SendMessage("1f7549f3edaf597fa770cca2d26ecbad", "hello", "", "", "")
 
-```shell
-nano ./config.yaml
-```
+	a := agent.Agent{
+		AccessKey: "****************",
+		Name:      "test",
+	}
 
-随后，启动程序即可。
+	a.Run(func(s []agent.Signaling) {
+		for _, i := range s {
+			i.Result = "abababababab"
+			a.SubmitSignalingResult(i)
+		}
+	})
+}
 
-```shell
-./sender-agent
-# nohup ./sender-agent >> ./output.log 2>&1 &
 ```

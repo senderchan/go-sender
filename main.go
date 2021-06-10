@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/senderchan/go-sender/agent"
 	"github.com/senderchan/go-sender/config"
@@ -10,7 +12,9 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"io/ioutil"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -21,6 +25,83 @@ var (
 )
 
 func main() {
+	pflag.String("config", "", "path to config file")
+	pflag.Bool("no-color", false, "log output with color")
+	pflag.Bool("log-json", false, "log output in json")
+
+	err := viper.BindPFlags(pflag.CommandLine)
+	if err != nil {
+		panic(err)
+	}
+	pflag.Parse()
+
+	viper.SetDefault("server", "https://sender.xzhshch.com")
+	viper.SetDefault("shell", os.Getenv("SHELL"))
+
+	if viper.GetString("config") != "" {
+		f, err := os.ReadFile(viper.GetString("config"))
+		if err != nil {
+			panic(err)
+		}
+		viper.SetConfigType("yaml")
+		err = viper.ReadConfig(bytes.NewReader(f))
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		viper.SetConfigType("yaml")
+		viper.SetConfigName("config")
+		viper.AddConfigPath("/etc/sender/agent")
+		viper.AddConfigPath("$HOME/.sender/agent")
+		viper.AddConfigPath(".")
+		err := viper.ReadInConfig()
+		if errors.As(err, &viper.ConfigFileNotFoundError{}) {
+			_ = ioutil.WriteFile("./config.yaml", []byte(`name: test
+accesskey: 758e2e934f**************9ebafcb
+
+action:
+  hello:
+    cmd: echo "hello"
+  ls:
+    cmd: ls -la
+    dir: ~/
+  aaa:
+    script: ./run.sh
+    dir: ~/
+  send:
+    cmd: echo "ok"
+    forward: http://localhost:9000
+  default:
+    cmd: docker version`), 0644)
+			fmt.Println(err)
+			fmt.Println("A configuration file has been generated.")
+			os.Exit(-1)
+		}
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	err = viper.UnmarshalKey("action", &config.Actions)
+	if err != nil {
+		panic(err)
+	}
+	for n := range config.Actions {
+		config.Actions[n].Name = n
+		if config.Actions[n].Dir == "" {
+			config.Actions[n].Dir = "."
+		}
+		config.Actions[n].Dir = filepath.Join(config.Wd, config.Actions[n].Dir)
+		if config.Actions[n].Script != "" {
+			config.Actions[n].Script = filepath.Join(config.Wd, config.Actions[n].Script)
+		}
+	}
+
+	if !viper.GetBool("log-json") {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, NoColor: viper.GetBool("no-color")})
+	}
+
+
 	if pflag.Arg(0) == "version" {
 		fmt.Print("v")
 		fmt.Println(version)
@@ -30,7 +111,7 @@ func main() {
 	} else if pflag.Arg(0) == "service" {
 		_ = ioutil.WriteFile("/etc/systemd/system/sender.service", []byte(`[Unit]
 Description=Sender
-Documentation=https://github.com/zhshch2002/sender-agent
+Documentation=https://github.com/senderchan/go-sender
 After=network.target network-online.target
 Requires=network-online.target
 

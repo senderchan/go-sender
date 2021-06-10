@@ -7,7 +7,7 @@ wget https://github.com/senderchan/go-sender/releases/download/v${version}/sende
 tar -zxvf sender_${version}_Linux_x86_64.tar.gz
 rm -f sender_${version}_Linux_x86_64.tar.gz
 chmod +x ./sender
-mv -f ./sendersender_${version}_Linux_x86_64.tar.gz /usr/bin
+mv -f ./sender /usr/bin
 
 echo "\n\n\n\n"
 
